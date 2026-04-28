@@ -1,0 +1,32 @@
+# Terraform local state and caches
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+
+# Local variable overrides and secrets
+*.tfvars
+*.tfvars.json
+terraform.tfvars
+terraform.tfvars.json
+
+# Plan output
+*.tfplan
+
+# Generated local SSH key material
+cluster_internal_key.pem
+
+# CLI/override files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Editor and OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db

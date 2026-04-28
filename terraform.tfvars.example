@@ -1,0 +1,7 @@
+resource_group_name = "myfrappe-cloud-rg"
+location            = "centralindia"
+admin_username      = "frappeadmin"
+ssh_public_key_path = "C:/Users/SagarMemane/.ssh/id_ed25519.pub"
+root_domain         = "cogniticon.in"
+db_root_password    = "change-me-db-root-password"
+site_admin_password = "change-me-site-admin-password"
