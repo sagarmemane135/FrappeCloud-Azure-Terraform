@@ -1,8 +1,8 @@
 # Configuration for the 4 specific nodes
 locals {
   servers = {
-    "press-control" = { size = "Standard_B2s",    ip = "10.0.1.10" }
-    "proxy-node"    = { size = "Standard_B1s",    ip = "10.0.1.11" }
+    "press-control" = { size = "Standard_B2s", ip = "10.0.1.10" }
+    "proxy-node"    = { size = "Standard_B1s", ip = "10.0.1.11" }
     "nonprod-node"  = { size = "Standard_D2s_v3", ip = "10.0.1.12" }
     "prod-node"     = { size = "Standard_D4s_v3", ip = "10.0.1.13" }
   }
@@ -51,12 +51,12 @@ resource "azurerm_network_interface_security_group_association" "assoc" {
 
 # Create the Virtual Machines
 resource "azurerm_linux_virtual_machine" "vm" {
-  for_each            = local.servers
-  name                = each.key
-  resource_group_name = azurerm_resource_group.rg.name
-  location            = azurerm_resource_group.rg.location
-  size                = each.value.size
-  admin_username      = var.admin_username
+  for_each              = local.servers
+  name                  = each.key
+  resource_group_name   = azurerm_resource_group.rg.name
+  location              = azurerm_resource_group.rg.location
+  size                  = each.value.size
+  admin_username        = var.admin_username
   network_interface_ids = [azurerm_network_interface.nic[each.key].id]
 
   # Automatically reads your local SSH key file
@@ -76,12 +76,12 @@ resource "azurerm_linux_virtual_machine" "vm" {
 
   # Press-control runs full bootstrap; workers keep minimal cloud-init setup.
   custom_data = each.key == "press-control" ? base64encode(templatefile("${path.module}/setup_control.sh", {
-    admin_username          = var.admin_username
-    root_domain             = var.root_domain
-    db_root_password        = var.db_root_password
-    site_admin_password     = var.site_admin_password
-    control_private_key_b64 = base64encode(tls_private_key.control_to_workers.private_key_openssh)
-  })) : base64encode(<<-EOF
+    admin_username            = var.admin_username
+    root_domain               = var.root_domain
+    db_root_password_shell    = replace(var.db_root_password, "'", "'\"'\"'")
+    site_admin_password_shell = replace(var.site_admin_password, "'", "'\"'\"'")
+    control_private_key_b64   = base64encode(tls_private_key.control_to_workers.private_key_openssh)
+    })) : base64encode(<<-EOF
     #cloud-config
     users:
       - default

@@ -23,10 +23,10 @@ apt-get install -y python3-dev python3-pip python3-venv mariadb-server mariadb-c
 
 # Configure MariaDB root password if this host uses auth_socket by default.
 if mysql -e "SELECT 1" >/dev/null 2>&1; then
-  mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${db_root_password}';" || true
+  mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${db_root_password_shell}';" || true
 fi
-mysql -uroot -p"${db_root_password}" -e "DELETE FROM mysql.user WHERE User='';" || true
-mysql -uroot -p"${db_root_password}" -e "FLUSH PRIVILEGES;" || true
+mysql -uroot -p${db_root_password_shell} -e "DELETE FROM mysql.user WHERE User='';" || true
+mysql -uroot -p${db_root_password_shell} -e "FLUSH PRIVILEGES;" || true
 
 sudo -u "${admin_username}" -H bash <<EOF
 set -euxo pipefail
@@ -41,7 +41,7 @@ fi
 
 cd press-bench
 /home/${admin_username}/.local/bin/bench get-app https://github.com/frappe/press.git || true
-/home/${admin_username}/.local/bin/bench new-site dashboard.${root_domain} --admin-password '${site_admin_password}' --mariadb-root-password '${db_root_password}' --install-app press --force || true
+/home/${admin_username}/.local/bin/bench new-site dashboard.${root_domain} --admin-password ${site_admin_password_shell} --mariadb-root-password ${db_root_password_shell} --install-app press --force || true
 /home/${admin_username}/.local/bin/bench setup production ${admin_username} --yes || true
 EOF
 

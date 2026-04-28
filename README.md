@@ -119,9 +119,25 @@ location            = "centralindia"
 admin_username      = "frappeadmin"
 ssh_public_key_path = "C:/Users/SagarMemane/.ssh/id_ed25519.pub"
 root_domain         = "example.com"
-db_root_password    = "replace-with-strong-password"
-site_admin_password = "replace-with-strong-password"
+db_root_password    = "MySecure!P@ssw0rd#2024"
+site_admin_password = "AnotherStrong$Pass123!"
 ```
+
+### Password Special Characters
+
+Both `db_root_password` and `site_admin_password` support special characters, including:
+- Symbols: `!@#$%^&*()_+-=[]{}|;':",.<>?/~`
+- Spaces (avoid in passwords for database compatibility)
+
+**Important:** Passwords are passed through shell escaping via Terraform `replace()` functions in `compute.tf` before injection into bootstrap commands. This ensures single quotes, backslashes, and other shell metacharacters are safely handled and will not break the bootstrap script.
+
+**Example strong passwords:**
+```
+db_root_password = "Pr0d!P@ssw0rd#2024$Secure"
+site_admin_password = "D@shb0ard$Admin&Secure!2024"
+```
+
+The bootstrap script uses proper quoting (`${db_root_password_shell}`) in MariaDB and Bench commands, so any special character combination is safe.
 
 ## Zero-Touch Control Bootstrap
 
