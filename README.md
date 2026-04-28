@@ -226,6 +226,8 @@ terraform apply tfplan
 
 If you later want remote state, you can add a `backend.tf` file yourself, but that is optional and not required for this repo.
 
+**GitHub Actions note:** The included workflow runs `terraform fmt` and `terraform validate` only. It does **not** use Azure credentials, so it cannot run `terraform plan` in GitHub Actions.
+
 5) After apply completes, read outputs and SSH into control node:
 
 ```bash
