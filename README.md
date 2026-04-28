@@ -222,6 +222,10 @@ terraform plan -out tfplan
 terraform apply tfplan
 ```
 
+**State note:** This repository uses Terraform's default local state. You do **not** need an Azure Storage backend or extra storage account for state management.
+
+If you later want remote state, you can add a `backend.tf` file yourself, but that is optional and not required for this repo.
+
 5) After apply completes, read outputs and SSH into control node:
 
 ```bash
@@ -235,7 +239,7 @@ sudo tail -f /var/log/user-data.log  # monitor bootstrap on control node
 Notes:
 - Keep `terraform.tfvars` local and secret. It's included in `.gitignore`.
 - If you need to restrict SSH to your IP, update `nsg.tf` or add an `ssh_source_cidr` variable.
-- Consider using a remote state backend (Azure Storage) before running in production.
+- Consider using remote state only if you need team collaboration, locking, or long-term state retention.
 
 ## Inputs (Variables)
 
