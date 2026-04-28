@@ -1,30 +1,91 @@
 # Frappe Cloud on Azure (Terraform)
 
-This repository provisions a multi-node Frappe/ERPNext-style infrastructure on Microsoft Azure using Terraform.
+![Terraform](https://img.shields.io/badge/Terraform-1.5+-blue?logo=terraform)
+![Azure](https://img.shields.io/badge/Azure-Infrastructure-blue?logo=microsoft-azure)
+![Ubuntu](https://img.shields.io/badge/Ubuntu-22.04%20LTS-orange?logo=ubuntu)
+![License](https://img.shields.io/badge/License-MIT-green)
 
-## What This Deploys
+Production-grade Frappe/ERPNext infrastructure on Microsoft Azure using Terraform. Deploy a secure, multi-node Frappe Cloud setup with automatic control-to-worker SSH key distribution and zero-touch bootstrapping.
 
-- Azure Resource Group
-- Virtual Network and Subnet
-- 4 Linux VMs (Ubuntu 22.04 LTS)
-- Public IPs only for `press-control` and `proxy-node`
-- Private NIC-only access for `nonprod-node` and `prod-node`
-- Network Security Group with inbound rules for SSH/HTTP/HTTPS
-- NAT Gateway for outbound internet from private nodes
-- Azure DNS Zone and A records
-- Azure Storage Account + private container for backups
-- Terraform-managed SSH key pair for control-to-worker access
+---
 
-## Node Topology
+## 📋 Table of Contents
 
-The compute layout is defined in `compute.tf`:
+- [Frappe Cloud on Azure (Terraform)](#frappe-cloud-on-azure-terraform)
+  - [📋 Table of Contents](#-table-of-contents)
+  - [🚀 Quick Start](#-quick-start)
+  - [📦 What This Deploys](#-what-this-deploys)
+  - [🏗️ Architecture](#️-architecture)
+  - [📋 Prerequisites](#-prerequisites)
+    - [System Requirements](#system-requirements)
+    - [Required Accounts \& Permissions](#required-accounts--permissions)
+    - [Install Required Tools](#install-required-tools)
+      - [macOS (using Homebrew)](#macos-using-homebrew)
+      - [Windows (using Chocolatey)](#windows-using-chocolatey)
+      - [Linux (Ubuntu/Debian)](#linux-ubuntudebian)
+      - [Verify Installations](#verify-installations)
+  - [Inputs (Variables)](#inputs-variables)
+    - [Password Special Characters](#password-special-characters)
+  - [Zero-Touch Control Bootstrap](#zero-touch-control-bootstrap)
+  - [SSH Access Model (Control -\> Workers)](#ssh-access-model-control---workers)
+  - [Deploy](#deploy)
+  - [Outputs](#outputs)
+  - [DNS Behavior](#dns-behavior)
+  - [Security Notes](#security-notes)
+  - [Known Caveats](#known-caveats)
+  - [Cost and Sizing Notes](#cost-and-sizing-notes)
+  - [Destroy](#destroy)
+  - [Troubleshooting](#troubleshooting)
 
-- `press-control` -> `Standard_B2s` -> `10.0.1.10`
-- `proxy-node` -> `Standard_B1s` -> `10.0.1.11`
-- `nonprod-node` -> `Standard_D2s_v3` -> `10.0.1.12`
-- `prod-node` -> `Standard_D4s_v3` -> `10.0.1.13`
+---
 
-## Architecture Diagram
+## 🚀 Quick Start
+
+For experienced users, here's the express setup:
+
+```bash
+# 1. Clone and enter directory
+git clone https://github.com/sagarmemane135/FrappeCloud-Azure-Terraform.git
+cd FrappeCloud-Azure-Terraform
+
+# 2. Ensure SSH key exists
+ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -N ""
+
+# 3. Create variables file
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars with your values
+
+# 4. Deploy
+terraform init
+terraform plan -out tfplan
+terraform apply tfplan
+
+# 5. View outputs
+terraform output
+```
+
+For detailed setup, see [Setup Guide](#-setup-guide) below.
+
+---
+
+## 📦 What This Deploys
+
+| Component | Details |
+|-----------|---------|
+| **Resource Group** | Dedicated Azure RG for all resources |
+| **Virtual Network** | 10.0.0.0/16 with private subnet 10.0.1.0/24 |
+| **VMs (4x)** | Ubuntu 22.04 LTS with auto-bootstrap |
+| **Public IPs** | press-control (B2s) & proxy-node (B1s) only |
+| **Private VMs** | nonprod-node (D2s_v3) & prod-node (D4s_v3) |
+| **NAT Gateway** | Outbound egress for private subnet |
+| **Security** | NSG with SSH/HTTP/HTTPS inbound rules |
+| **DNS** | Azure DNS zone with A records |
+| **Storage** | Account + container for backups |
+| **SSH Keys** | Terraform-managed control-to-worker key distribution |
+
+---
+
+## 🏗️ Architecture
 
 ```mermaid
 flowchart TB
@@ -64,36 +125,63 @@ flowchart TB
   Backup --- Control
 ```
 
-## File Overview
+**Key Design Points:**
+- **Bastion-Style:** press-control is the SSH gateway to private nodes
+- **Zero-Touch:** Control node auto-bootstraps Frappe/Press stack
+- **NAT Egress:** Private nodes route outbound traffic through NAT Gateway
+- **DNS:** Dashboard and wildcard subdomains point to public nodes
 
-- `providers.tf`: Terraform + Azure provider requirements
-- `variables.tf`: configurable inputs
-- `main.tf`: resource group, networking, storage account, storage container
-- `nsg.tf`: NSG security rules
-- `compute.tf`: public IPs, NICs, NSG associations, VMs, generated SSH key logic, cloud-init sudo setup
-- `keys.tf`: optional local SSH key generation helper
-- `setup_control.sh`: bootstrap script template for zero-touch Press setup on `press-control`
-- `terraform.tfvars.example`: safe example input file with placeholder values
-- `dns.tf`: DNS zone and records
-- `outputs.tf`: important deployment outputs
+---
 
-## Prerequisites
+## 📋 Prerequisites
 
-- Terraform v1.5+ (recommended)
-- Azure subscription with permissions to create:
-  - Resource groups
-  - Networking resources
-  - VMs
-  - DNS zone
-  - Storage account
-- Azure CLI logged in:
+Before you begin, ensure you have:
 
+### System Requirements
+- **Operating System:** Windows, macOS, or Linux
+- **Disk Space:** ~500 MB for tools and Terraform files
+- **Internet Connection:** Required for Azure API calls
+
+### Required Accounts & Permissions
+
+1. **Azure Subscription**
+   - Sign up: https://azure.microsoft.com/en-us/free/
+   - Permissions needed:
+     - Virtual Machine Contributor
+     - Network Contributor
+     - Storage Account Contributor
+     - DNS Zone Contributor
+   - If unsure, use **Owner** role in a test subscription
+
+2. **Domain Name** (optional but recommended)
+   - Required for SSL certificates and DNS
+   - Must be controllable at domain registrar
+
+### Install Required Tools
+
+#### macOS (using Homebrew)
 ```bash
-az login
-az account set --subscription "<your-subscription-id-or-name>"
+brew install terraform azure-cli git openssh
 ```
 
-- SSH public key file available locally (default path in this repo is `C:/Users/SagarMemane/.ssh/id_ed25519.pub`)
+#### Windows (using Chocolatey)
+```powershell
+choco install terraform azure-cli git openssh -y
+```
+
+#### Linux (Ubuntu/Debian)
+```bash
+sudo apt-get update
+sudo apt-get install -y terraform azure-cli git openssh-client
+```
+
+#### Verify Installations
+```bash
+terraform -version      # Should be v1.5+
+az --version           # Should be 2.50+
+git --version          # Should be 2.30+
+ssh-keygen --help      # OpenSSH validation
+```
 
 ## Inputs (Variables)
 
