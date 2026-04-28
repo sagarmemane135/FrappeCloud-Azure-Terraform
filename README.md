@@ -183,6 +183,60 @@ git --version          # Should be 2.30+
 ssh-keygen --help      # OpenSSH validation
 ```
 
+## 🎯 Setup Guide
+
+Follow these steps to deploy this stack on your machine or CI runner. Copy/paste the commands and replace placeholders where shown.
+
+1) Generate or verify an SSH key (ed25519 recommended):
+
+```bash
+# macOS / Linux / PowerShell
+ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -N ""
+
+# Windows CMD
+ssh-keygen -t ed25519 -f %USERPROFILE%\\.ssh\\id_ed25519 -N ""
+```
+
+2) Clone repo and create `terraform.tfvars` from the example:
+
+```bash
+git clone https://github.com/sagarmemane135/FrappeCloud-Azure-Terraform.git
+cd FrappeCloud-Azure-Terraform
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars with your values (do NOT commit this file)
+```
+
+3) Authenticate to Azure and select subscription:
+
+```bash
+az login
+az account set --subscription "<your-subscription-id-or-name>"
+```
+
+4) Initialize Terraform, review plan, and apply:
+
+```bash
+terraform init
+terraform validate
+terraform plan -out tfplan
+terraform apply tfplan
+```
+
+5) After apply completes, read outputs and SSH into control node:
+
+```bash
+terraform output
+ssh -i ~/.ssh/id_ed25519 ${admin_username}@$(terraform output -raw dashboard_ip)
+sudo tail -f /var/log/user-data.log  # monitor bootstrap on control node
+```
+
+6) DNS: use `terraform output name_servers` to update your registrar nameservers for `root_domain`.
+
+Notes:
+- Keep `terraform.tfvars` local and secret. It's included in `.gitignore`.
+- If you need to restrict SSH to your IP, update `nsg.tf` or add an `ssh_source_cidr` variable.
+- Consider using a remote state backend (Azure Storage) before running in production.
+
 ## Inputs (Variables)
 
 Defaults are defined in `variables.tf`:
